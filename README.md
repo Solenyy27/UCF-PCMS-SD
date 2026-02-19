@@ -7,14 +7,14 @@
 <br>
 <br>
 </div>
-##1. Introduction
+##1. Introduction  
 ***
 This project, nicknamed the Photovoltaic Characterization and Metrology System (PCMS) is intended to be used along with Ossilla Solar Simulators and Source Measurement Units along with a Raspberry Pi and compatible camera. The purpose of the project is to consolidate a bunch of commonly measured metrologies for PV cells into one system to both enable fast data acquisition at a low cost and to enable future use of multiple testing systems at the same time (e.g., illuminated TLM, EL during IV curve measurement).  
 <br>
 This code repository uses **python3** scripts which (in theory) should be usable through a compiler of your choice (or simply through python3 -m ...). It was made using **spyder** to comple and run code, so I would consider that the most stable.
 <br>
 <br>
-##2. Repository Layout and Contents
+##2. Repository Layout and Contents  
 ***
 The file structure should be as follows:  
 <pre>
