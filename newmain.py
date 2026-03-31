@@ -26,6 +26,10 @@ except Exception as e:
     print(e)
 import sys
 
+try:
+    app = QApplication(sys.argv)
+except:
+    app = QApplication.instance()
 #----------------
 # Console Menu
 #----------------
@@ -208,10 +212,6 @@ class MainWindow(QMainWindow): #Define the class for the window
 #----------------
 # MAIN
 #----------------
-try:
-    app = QApplication(sys.argv)
-except:
-    app = QApplication.instance()
 window = MainWindow()
 window.show()
 app.exec()
