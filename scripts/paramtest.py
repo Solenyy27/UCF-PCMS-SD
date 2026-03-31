@@ -5,13 +5,17 @@
 import sys
 import time
 
-paramlist = ['length','width','height','girth']
+
+paramlist = ['length','width','height']
+needlist = ['head','balls']
 
 def ping():
     print("ping successful")
     
-def run(mode=0):
+def run(mode=1):
     from mainlib import yesno
+    from mainlib import writecfg
+    writecfg('TEST','test',0)
     if mode == 1:
         print("Doing Something")
         time.sleep(5)

@@ -3,25 +3,28 @@
 
 import sys as sys #module for dealing with memory and file stuff
 sys.path.insert(0,'../UCF-PCMS-SD')
-sys.path.append('./TestScripts')
+sys.path.append('./scripts')
 import os #module for file pathing
 import configparser #module for config files as .ini
-import time
 import glob
-
+try:
+    import RPi.GPIO as GPIO
+except Exception as e:
+    print(e)
 
 flaglist = [] #create an empty flag list
+def importuserlibs(): #function to import user scripts from the script folder
+    for file in glob.glob("./scripts/*.py"): #check the TestScripts directory for user scripts
+        if file == "./scripts/__init__.py" or file == "./scripts/example.py": #skip the __init__ and example files.
+            continue
+        namestuff = file.split("/")
+        name = namestuff[2].split(".")
+        flaglist.append(name[0]) #add the name stripped from full file name to script list
+        exec('import scripts.'+name[0]+' as '+name[0]) #import the user script as its own name
 
-for file in glob.glob("./TestScripts/*.py"): #check the TestScripts directory for user scripts
-    if file == "./TestScripts/__init__.py" or file == "./TestScripts/example.py": #skip the __init__ and example files.
-        continue
-    namestuff = file.split("/")
-    name = namestuff[2].split(".")
-    flaglist.append(name[0]) #add the name stripped from full file name to script list
-    exec('import TestScripts.'+name[0]+' as '+name[0]) #import the user script as its own name
-
-            
-##########################################################
+#----------------
+# Flag holder class
+#----------------
 class sample: #define the class "sample" to hold data about where and what the sample has/will do
     #flag value of 0 = not set, 1 = set to be done, 2 = completed successfully, 3 = completed unsuccessfully
 
@@ -60,7 +63,6 @@ class sample: #define the class "sample" to hold data about where and what the s
             
     sname = str() #name of sample
     cfgpath = str() #config location for sample
-##########################################################
 
 sample = sample() #initializes sample as a sample class object that can be viewed and edited by all other scripts
 
@@ -68,7 +70,42 @@ sample = sample() #initializes sample as a sample class object that can be viewe
 yes = ['Y','y','yes','Yes']
 no = ['N', 'n', 'no', 'No']
 
-def yesno(*err): #General function for Y/n, recurse for invalid
+#----------------
+# Relay Control
+#----------------
+try:
+    relay_pins = [17, 18, 27, 22, 23, 24, 12, 16] #Relay pins listed in order of their use (relays 1,2,3,...)
+    relay_states = [GPIO.HIGH, GPIO.HIGH, GPIO.HIGH, GPIO.HIGH, GPIO.HIGH, GPIO.HIGH, GPIO.HIGH, GPIO.HIGH] #corresponding states of each relay
+except:
+    pass
+
+def relayinit(): #initializes GPIO for relay
+    GPIO.setmode(GPIO.BCM) #sets the pin communication mode to BCM (pins addressed by numbers from pinout)
+    for pin in relay_pins:
+        GPIO.setup(pin, GPIO.OUT) #sets the pins to be outputs
+    for i in range(len(relay_pins)):
+        GPIO.output(relay_pins[i], relay_states[i]) #outputs signal to designated pin via GPIO.output(pin,state)
+    print(relay_states) #prints the current relay states (1 is high, 0 is low); Switches toggled on when set to low
+
+def relaytoggle(relay): #function for toggling relay as numbered 1 through 8
+    relaynum = int(relay) - 1 #subtract 1 from user input to account for arrays starting at 0 instead of 1 e.g., 8 is actually array value 7
+    relay_states[relaynum] = not relay_states[relaynum] #uses the not function to invert True/False to False/True
+    for i in range(len(relay_pins)): #sets pins to designated state
+        GPIO.output(relay_pins[i], relay_states[i])
+        
+def relayreset(): #resets relay to the default position
+    for i in range(len(relay_pins)): #sets all relay states to high
+        relay_states[i] = GPIO.HIGH
+    for i in range(len(relay_pins)): #sends relay states to GPIO for each pin
+        GPIO.output(relay_pins[i], relay_states[i])
+
+
+
+#----------------
+# Scripting Functions
+#----------------
+
+def yesno(err=0): #General function for Y/n, recurse for invalid
     if err == 1:
         ans = str()
         print("Invalid Input")
@@ -151,13 +188,16 @@ def testprompt(e=0): #prompts user for test to run
 
     if valid == 1: # if a valid selection was chosen, confirm
         print("Confirm Selection(s)?")
-        yn = yesno(0) #yesno to confirm selections
+        yn = yesno() #yesno to confirm selections
         if yn == 1:
             return
         if yn == 0:
             testprompt(2) #recurse w/ no error to reinput responses
             return
 
+#----------------
+# CFG Control
+#----------------
 def initcfg(): #initializes cfg file by blanking the ini file associated with sample.cfgpath
     config = configparser.ConfigParser()
     with open(sample.cfgpath,'w') as configfile:
@@ -185,7 +225,7 @@ def mkdir(path): #creates directory if it does not exist
         try:
             os.makedirs(path)
         except PermissionError:
-            print(f"Permission denied: Unable to create directory.")
+            print("Permission denied: Unable to create directory.")
         except Exception as e:
             print(f"An error occurred: {e}")
     print(f"Created directory ~/{path}")
@@ -199,16 +239,61 @@ def prgmstart(): #Basic greeting logo
 
 def defineparams():
     paramdict = {} #create an empty dictionary to store needed parameters
-    for test in flaglist: #define user vlaues
-        tstname = eval(test)
-        if sample.chkflag(test) == 1 and hasattr(tstname, 'paramlist'): #check for paramlist elements
+    for i in flaglist: #define user vlaues
+        tstname = eval(i)
+        if sample.chkflag(i) == 1 and hasattr(tstname, 'paramlist'): #check for paramlist elements
             for item in tstname.paramlist:
                 if item not in paramdict: #if parameter not already recorded in dictionary, have user define value
                     print(f"Please define a value for {item}")
                     ans = input(">")
                     ans = float(ans) #convert to float
                     paramdict[item]=ans #add float vlaue to paramdict
-                writecfg(test,item,paramdict[item]) #write user inputted parameters to the config
+                writecfg(i,item,paramdict[item]) #write user inputted parameters to the config
+
+needs = {}
+gives = {}
+order = []
+orderout = []
+ordermid = []
+
+def testsort():
+    for i in flaglist: 
+        tstname = eval(i)
+        if sample.chkflag(i) == 1:
+            order.append(i)
+            if hasattr(tstname, 'needlist'): #checks for needlist in each flagged test
+                for item in tstname.needlist:
+                    try: #try to append to list of the item
+                        needs[item].append(i)
+                    except KeyError: #if no list exists, create it
+                        needs[item] = [i]
+            if hasattr(tstname, 'givelist'): #checks for givelist in each flagged test
+                for item in tstname.givelist:
+                    gives[item] = i #each givelist variable can only be given by one script
+
+    needls = []
+    givels = []
+    
+    for i in list(needs.values()):
+        for j in i:
+            needls.append(j)
+    print(needls)
+    for i in list(gives.values()):
+        givels.append(i)
+    print(givels)
+    
+    for i in order:
+        if i not in needls:
+            orderout.append(i)
+        else:
+            ordermid.append(i)
+    for i, tst in enumerate(ordermid):
+        try:    
+            nxt = ordermid[i+1]
+        except:
+            pass
+# todo clean this up its so bad
+
 
 def paramprompt(e=0):
     skp = 0

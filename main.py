@@ -14,8 +14,7 @@ while(1==1):
     initcfg() #initializes config file by blanking the ini file associated with the name
     testprompt() #prompt user for which tests they want to run
     defineparams() #prompt user for needed parameters
-                
-    
+    testsort()
     
     #todo general
     '''
