@@ -3,15 +3,16 @@
 from __future__ import annotations
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtSerialPort import QSerialPort
-from PySide6.QtCore import QIODeviceBase, Slot, Signal, Qt
-from PySide6.QtGui import QPalette
+from PySide6.QtCore import QIODeviceBase, Slot, Signal, Qt, QThread, QObject, QEvent
+from PySide6.QtGui import QPalette, QFocusEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
 QMainWindow, QApplication, QWidgetAction, QWidget, QGroupBox, QDockWidget, QGridLayout, QLabel,
-QVBoxLayout, QTextEdit, QPlainTextEdit, QPushButton
+QVBoxLayout, QTextEdit, QPlainTextEdit, QPushButton, QDialog, QLineEdit
 )
 import glob
 import serial
 import xtralien
+import subprocess
 try:
     from picamera2 import Picamera2, Preview
 except Exception as e:
@@ -30,6 +31,10 @@ try:
     app = QApplication(sys.argv)
 except:
     app = QApplication.instance()
+    
+    
+
+
 #----------------
 # Console Menu
 #----------------
@@ -40,12 +45,97 @@ overall just have some method of showing the outputs of user scripts while they 
 and have a play button here or on the playlist to start user script w/ popup menu that says "are you sure"
 """
 
+class SubprocessWorker(QThread):
+    output_line = Signal(str)
+    finished_signal = Signal(int) #exit code
+    
+    def __init__(self, command):
+        super().__init__()
+        self.command = command
+
+    def run(self):
+        process = subprocess.Popen(
+            self.command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+        
+        for line in process.stdout:
+            self.output_line.emit(line.rstrip())
+            
+        process.wait()
+        self.finished_signal.emit(process.returncode)
+
+#in the worker thread do subprocess.call(['python', 'somescript.py', somescript_arg1, somescript_val1,...]) or use 'pyhton3', f'{script}' and change value in script to change program targeted.
+##fix tmrrw; merge subprocess in and out w/ widget to create one thingy
+class SubprocessOut(QPlainTextEdit):
+    UsrControl = 1
+    usrstr = ""
+    def __init__(self):
+        super().__init__()
+        self.setReadOnly(True)
+        self.worker = None
+ 
+    def run_command(self):
+        if self.worker is not None:
+            return
+        self.worker = SubprocessWorker(
+            "python3")
+        self.worker.output_line.connect(self.on_output_line)
+        self.worker.finished_signal.connect(self.on_finished)
+        self.worker.start()
+        
+    def on_output_line(self,text):
+        self.appendPlainText(text)
+    
+    def on_finished(self, exit_code):
+        self.appendPlainText(f"--- Process finished  (exit code {exit_code}) ---")
+        self.worker = None
+    
+            
+class SubprocessIn(QLineEdit):
+    def __init__(self):
+        super().__init__()
+        self.setText("$  ")
+        self.installEventFilter(self)
+        
+    def eventFilter(self, target, event):
+        if event.type() == QEvent.KeyRelease:
+            if event.key() == QtCore.Qt.Key_Return or event.key() == QtCore.Qt.Key_Enter:
+                self.DoLineIn()
+            
+        return super().eventFilter(target, event)
+        
+    def DoLineIn(self, *args):
+        ans = self.text()
+        ans = ans.strip("$")
+        self.setText("$  ")
+
+        
+        
+        
+    
+class SubprocessWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        grid = QGridLayout()
+        self.setLayout(grid)
+        subprocin = SubprocessIn()
+        grid.addWidget(SubprocessOut(),0,0)
+        grid.addWidget(subprocin,1,0)
+        
+
+        
+        
+        
+    
 #----------------
 # Playlist Menu
 #----------------
 """
 #todo
-
 create a list of entries that can be clicked or dragged on buttons to change their order
 list above the playlist has items which can be selected to set their state to checked() and adds them to the playlist
 use a .ini file for the whole program to keep track of the order upon exit and reload of the program (along with other vars)
@@ -195,8 +285,8 @@ class MainWidget(QWidget): #Define the class for the main area within the main w
         
         grid.addWidget(StatusWidget(),0,0)
         grid.addWidget(CameraGroup(),1,0)
-
-        
+        grid.addWidget(SubprocessWidget(),1,2)
+        grid.addWidget(GroupBox(),1,1)
         grid.addWidget(rightwidget,0,2)
         grid.addWidget(centralwidget, 0,1,2,1) #add the widget to the grid in row 0 column 1
         
@@ -208,6 +298,9 @@ class MainWindow(QMainWindow): #Define the class for the window
         self.setWindowTitle("PCMS Control Panel")
         self.setGeometry(0, 0, 960, 540) #set x and y coords followed by window width and height
         self.setCentralWidget(MainWidget())
+        self.show()
+        
+
 
 #----------------
 # MAIN
