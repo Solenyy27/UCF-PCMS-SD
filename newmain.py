@@ -3,22 +3,23 @@
 from __future__ import annotations
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtSerialPort import QSerialPort
-from PySide6.QtCore import QIODeviceBase, Slot, Signal, Qt, QThread, QObject, QEvent
-from PySide6.QtGui import QPalette, QFocusEvent, QKeySequence, QShortcut
+from PySide6.QtCore import QIODeviceBase, Slot, Signal, Qt, QThread, QObject, QEvent, QRunnable, QThreadPool
+from PySide6.QtGui import QPalette, QFocusEvent, QKeySequence, QShortcut, QMouseEvent
 from PySide6.QtWidgets import (
 QMainWindow, QApplication, QWidgetAction, QWidget, QGroupBox, QDockWidget, QGridLayout, QLabel,
-QVBoxLayout, QTextEdit, QPlainTextEdit, QPushButton, QDialog, QLineEdit
+QVBoxLayout, QTextEdit, QPlainTextEdit, QPushButton, QDialog, QLineEdit, QComboBox
 )
 import glob
 import serial
 import xtralien
-import subprocess
+import traceback
 try:
     from picamera2 import Picamera2, Preview
 except Exception as e:
     print(e)
 
 from mainlib import *
+from mainlib import sample
 importuserlibs()
 
 try:
@@ -26,13 +27,16 @@ try:
 except Exception as e:
     print(e)
 import sys
+sys.path.insert(0,'../UCF-PCMS-SD')
+sys.path.append('./scripts')
+
 
 try:
     app = QApplication(sys.argv)
 except:
     app = QApplication.instance()
     
-    
+
 
 
 #----------------
@@ -44,6 +48,10 @@ or have scripts send data to some variable to update text that is printed to the
 overall just have some method of showing the outputs of user scripts while they are run
 and have a play button here or on the playlist to start user script w/ popup menu that says "are you sure"
 """
+"""
+#
+# Currently Scrapped! Run with spyder console or traditional python3 -m.
+#
 
 class SubprocessWorker(QThread):
     output_line = Signal(str)
@@ -82,7 +90,7 @@ class SubprocessOut(QPlainTextEdit):
         if self.worker is not None:
             return
         self.worker = SubprocessWorker(
-            "python3")
+            "python3", f'{something.py}')
         self.worker.output_line.connect(self.on_output_line)
         self.worker.finished_signal.connect(self.on_finished)
         self.worker.start()
@@ -101,22 +109,15 @@ class SubprocessIn(QLineEdit):
         self.setText("$  ")
         self.installEventFilter(self)
         
-    def eventFilter(self, target, event):
-        if event.type() == QEvent.KeyRelease:
-            if event.key() == QtCore.Qt.Key_Return or event.key() == QtCore.Qt.Key_Enter:
-                self.DoLineIn()
+
             
-        return super().eventFilter(target, event)
+        return 
         
     def DoLineIn(self, *args):
         ans = self.text()
         ans = ans.strip("$")
         self.setText("$  ")
-
         
-        
-        
-    
 class SubprocessWidget(QWidget):
     def __init__(self):
         super().__init__()
@@ -125,10 +126,8 @@ class SubprocessWidget(QWidget):
         subprocin = SubprocessIn()
         grid.addWidget(SubprocessOut(),0,0)
         grid.addWidget(subprocin,1,0)
-        
+"""
 
-        
-        
         
     
 #----------------
@@ -156,6 +155,146 @@ either: display of the .ini that is updated after user input
 or
 list of fields (w/ scrollbar) that can be edited
 """
+
+
+class WSignals(QObject): #defines signals that can be given off by Worker when completed
+    finished = Signal(int) #gets just thread_id
+    error = Signal(str)
+    result = Signal(object)
+    progress = Signal(tuple) #gets thread_id, progress_value
+
+class Worker(QRunnable): #generic QThread runner example
+
+    @Slot()
+    def run(self): #VV call function to be ran in parallel in terminal hereVV
+        while(True):
+            ans = input(">")
+            if ans == 'exit':
+                break
+            try:
+                exec(ans)
+            except Exception as e:
+                print(e)
+            
+
+
+class ThreadEnabledWidget(QGroupBox):
+    grid = QGridLayout()
+    threadpool = QThreadPool() #must define threadpool for workers pre __init__
+    button = QPushButton()
+    ding = True
+    
+    def __init__(self):
+        super().__init__()
+        self.setLayout(self.grid)
+        self.button.setText("><")
+        self.grid.addWidget(self.button)
+        self.button.clicked.connect(self.withThread)
+        
+    def withThread(self): #use this method to call workers
+        worker = Worker()
+        self.threadpool.start(worker)
+        
+        
+class filedropdown(QComboBox):
+    itemlist = ["..."]
+    itemcontents = []
+    ran = 0
+    namepathcontents = ""
+    
+    def __init__(self):
+        super().__init__()
+        for i in self.itemlist:
+            self.addItem(i)
+        self.ran = len(self.itemlist)
+        #todo: get window cfg file for recently used paths to import into itemlist
+        
+    # def itemrefresh(self):
+    #     for i in range(len(self.itemlist)):
+    #         if self.itemlist[i] == "...":
+    #             self.itemlist[i] = self.namepathcontents
+    #         if self.namepathcontents not in self.itemlist:
+    #             self.itemlist.append(self.namepathcontents)
+            
+    #     for i in self.itemlist:
+    #         if i in self.itemrefresh()
+        
+    #     if len(self.itemlist) > self.ran:
+    #         self.ran = len(self.itemlist)
+    #         print("ding")
+  #todo: fix asap
+#just use glob.glob for this
+#use the setfileloc function's mkdir to call this function
+#then make this function scan glob.glob ./output for any changes
+#add all current output folders to the list
+#set the active item to be the one that matches the current output for namepath
+
+
+class SampleFiles(QWidget):
+    grid = QGridLayout()
+    snamein = QLineEdit()
+    fileloc = filedropdown()
+    def __init__(self):
+        super().__init__()
+        self.setLayout(self.grid)
+        self.installEventFilter(self)
+        sampnamebox = QLabel("Sample Name")
+        sampnamebox.setAlignment(QtCore.Qt.AlignLeft)
+        self.grid.addWidget(sampnamebox,0,0)
+        filenamebox = QLabel("File Location")
+        sampnamebox.setAlignment(QtCore.Qt.AlignLeft)
+        self.grid.addWidget(filenamebox,1,0)
+        
+        
+  
+        self.snamein.setAlignment(QtCore.Qt.AlignCenter)
+        self.snamein.setPlaceholderText("Enter a Sample Name")
+        self.grid.addWidget(self.snamein, 0,2)
+        
+        
+        self.grid.addWidget(self.fileloc, 1,2)
+        
+    def setfileloc(self):
+        sample.sname = self.snamein.text()
+        namepath = "output/"+sample.sname+"/"
+        self.fileloc.namepathcontents = namepath
+        sample.cfgpath = namepath+sample.sname+'_config.ini' 
+        mkdir(namepath)
+        initcfg()
+        self.fileloc.itemrefresh()
+        
+    #on save button or enter in QWidget:
+        #do mkdir(namepath)
+        #set sample.cfgpath
+        #do cfginit()
+        
+        
+    def eventFilter(self, target, event):
+        if event.type() == QEvent.KeyRelease:
+            if event.key() == QtCore.Qt.Key_Return or event.key() == QtCore.Qt.Key_Enter:
+                self.setfileloc()
+        return super().eventFilter(target, event)
+    
+
+
+
+class SampleWidget(QGroupBox):
+    def __init__(self):
+        super().__init__()
+        grid = QGridLayout()
+        self.setLayout(grid)
+        self.installEventFilter(self)
+        grid.addWidget(SampleFiles(),0,0)
+
+    
+    def eventTrigger(self):
+        not self.show() #change
+        
+    
+
+    
+
+
 #----------------
 # Status Window
 #----------------
@@ -178,7 +317,7 @@ class StatusWidget(QGroupBox): #create a group box element for the status notifi
             self.grid.addWidget(self.responselabels[i],i,1) #adds each response label to the next column
             self.rows = i #records the number of rows iterated through
         refreshbutton = QPushButton("Refresh Devices")
-        refreshbutton.clicked.connect(self.refreshtrigger) #when button is clicked, the refreshtrigger function is done
+        refreshbutton.clicked.connect(self.refreshtrigger) #uses the Qt.Signal package to .connect() with the button and trigger the function refreshtrigger on click
         self.grid.addWidget(refreshbutton, self.rows+1,0, 1,2) #adds a button below the last created row
         self.refreshtrigger() #calls refreshtrigger once to get initial states of each item
         
@@ -194,7 +333,7 @@ class StatusWidget(QGroupBox): #create a group box element for the status notifi
                 print(f'connection established with solar sim in {device}')
                 sspower(0) #sets the solar sim power level to zero to turn off the lighting
                 
-        if self.smustatus == 0: #color and text for responselabels is changed based on detection
+        if self.smustatus == 0: #color and text for response labels is changed based on detection
             self.responselabels[0].setText("No Connection")
             self.responselabels[0].setStyleSheet("color: red;")
         elif self.smustatus == 1:
@@ -217,11 +356,11 @@ class StatusWidget(QGroupBox): #create a group box element for the status notifi
 #----------------
 # Camera Window
 #----------------
-class CameraWidget(QWidget):
+class CameraWidget(QWidget): #creates the widget that handles the camera
     def __init__(self, parent=None):
         super(CameraWidget, self).__init__(parent)
 
-        self.camera = picamera2.Picamera2()
+        self.camera = picamera2.Picamera2() #this may have to be changed later, I am unsure.
         self.camera.sensor_mode = 2  # Choose sensor mode 2 for 640x480 resolution
         self.camera.configure(self.camera.create_preview_configuration(main={"size": (640, 480)}))
         self.camera.start()
@@ -235,7 +374,7 @@ class CameraWidget(QWidget):
         self.timer.timeout.connect(self.update_frame)
         self.timer.start(int(1000 / 24))
 
-    def update_frame(self):
+    def update_frame(self): #updates window frames to enabel video output
         image = self.camera.capture_image()
         image = image.convert("RGBA")
         data = image.tobytes("raw", "RGBA")
@@ -243,22 +382,22 @@ class CameraWidget(QWidget):
         pix = PyQt5.QtGui.QPixmap.fromImage(qim)
         self.label.setPixmap(pix)
 
-class CameraGroup(QGroupBox):
+class CameraGroup(QGroupBox): #defines the window area for the camera controls
     def __init__(self, parent=None):
         super().__init__()
         grid = QGridLayout()
         self.setLayout(grid)
         self.setTitle("Camera Preview")
         self.setAlignment(QtCore.Qt.AlignCenter)
-        try:
-            grid.addWidget(CameraWidget(),1,0)
-        except Exception as e:
+        try: #attempt to establish connection with the camera widget
+            grid.addWidget(CameraWidget(),1,0) #idk why I define a grid; TODO check later.
+        except Exception as e: #if no connection is found, shows an error message from exception instead.
             Error = QLabel(f"Error! \n {e}")
             Error.setStyleSheet("color: red;")
             Error.setAlignment(QtCore.Qt.AlignCenter)
             grid.addWidget(Error, 1,0)
 
-class GroupBox(QGroupBox):
+class GroupBox(QGroupBox): #generic groupbox for testing purposes
     def __init__(self):
         super().__init__()
         grid = QGridLayout() #creates a grid for the widget
@@ -278,36 +417,48 @@ class MainWidget(QWidget): #Define the class for the main area within the main w
         super().__init__()
         grid = QGridLayout() #define class QGridLayout to gridlayout
         self.setLayout(grid) #set the main window to use gridlayout
-        centralwidget = GroupBox() #create a widget of class groupbox
-        rightwidget = GroupBox()
-        
-        
-        
-        grid.addWidget(StatusWidget(),0,0)
-        grid.addWidget(CameraGroup(),1,0)
-        grid.addWidget(SubprocessWidget(),1,2)
-        grid.addWidget(GroupBox(),1,1)
-        grid.addWidget(rightwidget,0,2)
-        grid.addWidget(centralwidget, 0,1,2,1) #add the widget to the grid in row 0 column 1
-        
-        
-    
-class MainWindow(QMainWindow): #Define the class for the window
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("PCMS Control Panel")
-        self.setGeometry(0, 0, 960, 540) #set x and y coords followed by window width and height
-        self.setCentralWidget(MainWidget())
-        self.show()
-        
 
+        
+        leftContainer = QWidget() #defines a widget as a container to hold the first column of modules
+        leftgrid = QGridLayout() #sets left module grid
+        leftContainer.setLayout(leftgrid)
+        leftgrid.addWidget(StatusWidget(),0,0) #VV adds left modules on top of one another, I could have used QVbox but I forgor VV
+        leftgrid.addWidget(CameraGroup(),1,0)
+        grid.addWidget(leftContainer,0,0,2,1) #adds the left container to the main widget
+    
+        centralrightContainer = QWidget() #defines the container to hold the right widgets, which take up two columns (2/3 the window space of the left container)
+        crgrid = QGridLayout()
+        centralrightContainer.setLayout(crgrid)
+        crgrid.addWidget(SampleWidget(),0,0)
+        crgrid.addWidget(GroupBox(),1,0)
+        grid.addWidget(centralrightContainer,0,1,2,2)
+        
+debugmode = 0
+
+class MainWindow(QMainWindow): #Define the class for the window
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setWindowTitle("PCMS Control Panel") #sets window title
+        self.setFixedSize(960, 540) #set x and y coords followed by window width and height; not resizeable because the program is rudimentary.
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+        self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, False)
+        self.setWindowFlag(Qt.WindowType.WindowFullscreenButtonHint, False)
+        self.args = args
+        self.kwargs = kwargs
+        self.setCentralWidget(MainWidget()) #sets the contents of the window to be the main widget and its contents
+        self.show() #shows all components of QWidgets loaded into the main window
+        
+  
+def run():
+    window = MainWindow()
+    app.exec()
+    
 
 #----------------
 # MAIN
 #----------------
-window = MainWindow()
-window.show()
-app.exec()
+if __name__ == "__main__":
+    run()
 sys.exit()
 
 

@@ -117,9 +117,7 @@ def yesno(err=0): #General function for Y/n, recurse for invalid
     else:
         return yesno(1)
         
-def nameprompt(): #Prompts for new name, recurse for no during confirm
-    print("Please input a new sample name:")
-    name = input(">")
+def nameprompt(name): #Prompts for new name, recurse for no during confirm
     if name == sample.sname:
         print("Name already in use. Continue anyways? (this will overwrite any data taken)")
         ans = yesno(0)
