@@ -4,10 +4,10 @@ from __future__ import annotations
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtSerialPort import QSerialPort
 from PySide6.QtCore import QIODeviceBase, Slot, Signal, Qt, QThread, QObject, QEvent, QRunnable, QThreadPool
-from PySide6.QtGui import QPalette, QFocusEvent, QKeySequence, QShortcut, QMouseEvent
+from PySide6.QtGui import QPalette, QFocusEvent, QKeySequence, QShortcut, QMouseEvent, QIcon
 from PySide6.QtWidgets import (
 QMainWindow, QApplication, QWidgetAction, QWidget, QGroupBox, QDockWidget, QGridLayout, QLabel,
-QVBoxLayout, QTextEdit, QPlainTextEdit, QPushButton, QDialog, QLineEdit, QComboBox
+QVBoxLayout, QTextEdit, QPlainTextEdit, QPushButton, QDialog, QLineEdit, QComboBox, QCheckBox, QToolButton
 )
 import glob
 import serial
@@ -20,7 +20,15 @@ except Exception as e:
 
 from mainlib import *
 from mainlib import sample
-importuserlibs()
+
+for file in glob.glob("./scripts/*.py"): #check the TestScripts directory for user scripts
+    if file == "./scripts/__init__.py" or file == "./scripts/example.py": #skip the __init__ and example files.
+        continue
+    namestuff = file.split("/")
+    name = namestuff[2].split(".")
+    flaglist.append(name[0]) #add the name stripped from full file name to script list
+    exec('import scripts.'+name[0]+' as '+name[0]) #import the user script as its own name
+
 
 try:
     import RPi.GPIO as GPIO
@@ -134,29 +142,34 @@ class SubprocessWidget(QWidget):
 # Playlist Menu
 #----------------
 """
-#todo
+#todo !!!NEXTUP!!!
 create a list of entries that can be clicked or dragged on buttons to change their order
 list above the playlist has items which can be selected to set their state to checked() and adds them to the playlist
 use a .ini file for the whole program to keep track of the order upon exit and reload of the program (along with other vars)
 """
+class PlaylistPanel(QWidget):
+    def __init__(self):
+        super().__init__()
+        grid = QGridLayout()
+        self.setLayout(grid)
+
+class StartStopPanel(QGroupBox):
+    def __init__(self):
+        super().__init__()
+        grid = QGridLayout()
+        self.setLayout(grid)
+
+class Playlist(QGroupBox):
+    def __init__(self):
+        super().__init__()
+        grid = QGridLayout()
+        self.setLayout(grid)
+        grid.addWidget(PlaylistPanel(),0,0)
+        grid.addWidget(StartStopPanel(),0,1)
+
 #----------------
 # Sample Window
 #----------------
-"""
-#todo
-
-create a window that lets you set the sample name sample.name() from mainlib
-has set directory button next to it to create the output directory and initial config file
-warning if named .ini is already found
-
-bottom of this central window should house the parameters editing section
-
-either: display of the .ini that is updated after user input
-or
-list of fields (w/ scrollbar) that can be edited
-"""
-
-
 class WSignals(QObject): #defines signals that can be given off by Worker when completed
     finished = Signal(int) #gets just thread_id
     error = Signal(str)
@@ -195,79 +208,76 @@ class ThreadEnabledWidget(QGroupBox):
         worker = Worker()
         self.threadpool.start(worker)
         
-        
-class filedropdown(QComboBox):
-    itemlist = ["..."]
-    itemcontents = []
-    ran = 0
-    namepathcontents = ""
-    
-    def __init__(self):
-        super().__init__()
-        for i in self.itemlist:
-            self.addItem(i)
-        self.ran = len(self.itemlist)
-        #todo: get window cfg file for recently used paths to import into itemlist
-        
-    # def itemrefresh(self):
-    #     for i in range(len(self.itemlist)):
-    #         if self.itemlist[i] == "...":
-    #             self.itemlist[i] = self.namepathcontents
-    #         if self.namepathcontents not in self.itemlist:
-    #             self.itemlist.append(self.namepathcontents)
-            
-    #     for i in self.itemlist:
-    #         if i in self.itemrefresh()
-        
-    #     if len(self.itemlist) > self.ran:
-    #         self.ran = len(self.itemlist)
-    #         print("ding")
-  #todo: fix asap
-#just use glob.glob for this
-#use the setfileloc function's mkdir to call this function
-#then make this function scan glob.glob ./output for any changes
-#add all current output folders to the list
-#set the active item to be the one that matches the current output for namepath
 
-
-class SampleFiles(QWidget):
+class EditableBox(QWidget): #box to hold the editable class widgets in SampleFiles (defines the grid layout)
     grid = QGridLayout()
-    snamein = QLineEdit()
-    fileloc = filedropdown()
     def __init__(self):
         super().__init__()
         self.setLayout(self.grid)
-        self.installEventFilter(self)
+        
+
+class SampleFiles(QWidget):
+    grid = QGridLayout() #creates the layout for this widget
+    snamein = QLineEdit() #creates field for user to input sample name
+    flocinfo = QLineEdit() #creates field for file location info to be read into
+    editablebox = EditableBox() #creates the box to hold the checkbox and label
+    editable = QCheckBox() #creates a checkbox that can be clicked to override the file location
+    button = QToolButton() #creates a button that can be used instead of the enter key
+    flocstr = "..." #holds the string that corresponds to the namepath
+    usredit = 0 #holds the state of user editability
+    SaveIcon = QIcon()
+    
+    def __init__(self):
+        super().__init__()
+        self.setLayout(self.grid)
+        self.installEventFilter(self) #installs an event filter to catch enter keypresses and use them to activate setfileloc function
         sampnamebox = QLabel("Sample Name")
         sampnamebox.setAlignment(QtCore.Qt.AlignLeft)
         self.grid.addWidget(sampnamebox,0,0)
-        filenamebox = QLabel("File Location")
+        filenamebox = QLabel("Output Folder Path")
         sampnamebox.setAlignment(QtCore.Qt.AlignLeft)
         self.grid.addWidget(filenamebox,1,0)
-        
-        
-  
-        self.snamein.setAlignment(QtCore.Qt.AlignCenter)
+        self.snamein.setAlignment(QtCore.Qt.AlignVCenter)
         self.snamein.setPlaceholderText("Enter a Sample Name")
-        self.grid.addWidget(self.snamein, 0,2)
-        
-        
-        self.grid.addWidget(self.fileloc, 1,2)
+        self.grid.addWidget(self.snamein, 0,1)
+        self.SaveIcon.addFile('SaveIcon.png')
+        self.button.setIcon(self.SaveIcon)
+        self.button.clicked.connect(self.setfileloc)
+        self.grid.addWidget(self.button, 0,2)
+        self.flocinfo.setAlignment(QtCore.Qt.AlignVCenter)
+        self.flocinfo.setText(self.flocstr) #sets the text of flocinfo to be the namepath string
+        self.flocinfo.setReadOnly(True)
+        self.grid.addWidget(self.flocinfo,1,1)
+        self.editablebox.grid.addWidget(QLabel("Override"),0,0)
+        self.editablebox.grid.addWidget(self.editable, 0,1)
+        self.grid.addWidget(self.editablebox,1,2)
+        self.editable.checkStateChanged.connect(self.editcheck) #connects the checkbox to the editcheck function
         
     def setfileloc(self):
-        sample.sname = self.snamein.text()
-        namepath = "output/"+sample.sname+"/"
-        self.fileloc.namepathcontents = namepath
-        sample.cfgpath = namepath+sample.sname+'_config.ini' 
-        mkdir(namepath)
-        initcfg()
-        self.fileloc.itemrefresh()
-        
-    #on save button or enter in QWidget:
-        #do mkdir(namepath)
-        #set sample.cfgpath
-        #do cfginit()
-        
+        sample.sname = self.snamein.text() #sets the sample class field sname to be the user input
+        if self.snamein.text() == "":
+            return
+        if self.usredit == 0: #if user override for filepath is not used,
+            namepath = "output/"+sample.sname+"/" #default namepath is output / samplename / 
+            self.flocstr = namepath #uses mainlib var namepath to set self.flocstr
+            sample.cfgpath = namepath+sample.sname+'_config.ini' #sets sample config path
+            mkdir(namepath) #uses mainlib function to set make directory if needed
+            initcfg() #uses mainlib function to initialize config file
+        if self.usredit == 1: #if user override is enabled
+            self.flocstr = self.flocinfo.text() #uses user text to set flocstr
+            namepath = self.flocstr #sets namepath from user input
+            sample.cfgpath = self.flocstr +sample.sname+'_config.ini' #sets sample path to be the sample name in the user defined directory
+            mkdir(namepath)
+            initcfg()
+        self.flocinfo.setText(self.flocstr)
+            
+    def editcheck(self): #sets the flag for user edit override and the corresponding ability to use the textedit property of the file location box
+        if self.editable.isChecked() == True:
+            self.flocinfo.setReadOnly(False)
+            self.usredit = 1
+        else:
+            self.flocinfo.setReadOnly(True)
+            self.usredit = 0
         
     def eventFilter(self, target, event):
         if event.type() == QEvent.KeyRelease:
@@ -275,20 +285,22 @@ class SampleFiles(QWidget):
                 self.setfileloc()
         return super().eventFilter(target, event)
     
+class SampleParams(QWidget): #todo later; get params from files and then generate a list of QTextFields and corresponding QLabels for them to be edited with
+# add a refresh button so that they can be generated again from the currently imported list of user things
+    
+    def __init__(self):
+        super().__init__()
+        grid = QGridLayout()
+        listparams()
+        
 
-
-
-class SampleWidget(QGroupBox):
+class SampleWidget(QGroupBox): #overall box for the sample definiton widgets
     def __init__(self):
         super().__init__()
         grid = QGridLayout()
         self.setLayout(grid)
-        self.installEventFilter(self)
         grid.addWidget(SampleFiles(),0,0)
-
-    
-    def eventTrigger(self):
-        not self.show() #change
+        grid.addWidget(SampleParams(),1,0)
         
     
 
@@ -430,7 +442,7 @@ class MainWidget(QWidget): #Define the class for the main area within the main w
         crgrid = QGridLayout()
         centralrightContainer.setLayout(crgrid)
         crgrid.addWidget(SampleWidget(),0,0)
-        crgrid.addWidget(GroupBox(),1,0)
+        crgrid.addWidget(Playlist(),1,0)
         grid.addWidget(centralrightContainer,0,1,2,2)
         
 debugmode = 0
@@ -439,6 +451,9 @@ class MainWindow(QMainWindow): #Define the class for the window
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setWindowTitle("PCMS Control Panel") #sets window title
+        self.setStyleSheet("""
+            background-color: #262626;
+            """)
         self.setFixedSize(960, 540) #set x and y coords followed by window width and height; not resizeable because the program is rudimentary.
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
         self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, False)

@@ -13,14 +13,15 @@ except Exception as e:
     print(e)
 
 flaglist = [] #create an empty flag list
-def importuserlibs(): #function to import user scripts from the script folder
-    for file in glob.glob("./scripts/*.py"): #check the TestScripts directory for user scripts
-        if file == "./scripts/__init__.py" or file == "./scripts/example.py": #skip the __init__ and example files.
-            continue
-        namestuff = file.split("/")
-        name = namestuff[2].split(".")
-        flaglist.append(name[0]) #add the name stripped from full file name to script list
-        exec('import scripts.'+name[0]+' as '+name[0]) #import the user script as its own name
+
+for file in glob.glob("./scripts/*.py"): #check the TestScripts directory for user scripts
+    if file == "./scripts/__init__.py" or file == "./scripts/example.py": #skip the __init__ and example files.
+        continue
+    namestuff = file.split("/")
+    name = namestuff[2].split(".")
+    flaglist.append(name[0]) #add the name stripped from full file name to script list
+    exec('import scripts.'+name[0]+' as '+name[0]) #import the user script as its own name
+
 
 #----------------
 # Flag holder class
@@ -234,6 +235,15 @@ def prgmstart(): #Basic greeting logo
     file_cont = f.read()
     print(file_cont)
     f.close
+    
+paramdict = {}
+def listparams():
+    for i in flaglist:
+        tstname = eval(i)
+        if sample.chkflag(i) == 1 and hasattr(tstname, 'paramlist'):
+            for item in tstname.paramlist:
+                paramdict[item] = None
+            writecfg(i,item,paramdict[item])
 
 def defineparams():
     paramdict = {} #create an empty dictionary to store needed parameters

@@ -1385,6 +1385,7 @@ dependencies = [
     { name = "serial" },
     { name = "six" },
     { name = "spyder" },
+    { name = "spyder-kernels" },
     { name = "tzdata" },
     { name = "xtralien" },
 ]
@@ -1410,6 +1411,7 @@ requires-dist = [
     { name = "serial", specifier = ">=0.0.97" },
     { name = "six", specifier = ">=1.17.0" },
     { name = "spyder", specifier = ">=6.1.3" },
+    { name = "spyder-kernels", specifier = ">=3.1.3" },
     { name = "tzdata", specifier = ">=2025.3" },
     { name = "xtralien", specifier = ">=2.11.2" },
 ]
