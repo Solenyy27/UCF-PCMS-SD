@@ -47,14 +47,7 @@ except:
 #----------------
 # Command Threading Objects
 #----------------
-class WSignals(QObject): #defines signals that can be given off by Worker when completed
-    finished = Signal(int) #gets just thread_id
-    error = Signal(str)
-    result = Signal(object)
-    progress = Signal(tuple) #gets thread_id, progress_value
-
-class Worker(QRunnable): #generic QThread runner example
-
+class Breadboard(QRunnable): #"breadboard" script that allows for user command exec and exiting after user tinkering
     @Slot()
     def run(self): #VV call function to be ran in parallel in terminal hereVV
         while(True):
@@ -65,23 +58,20 @@ class Worker(QRunnable): #generic QThread runner example
                 exec(ans)
             except Exception as e:
                 print(e)
-            
-class ThreadEnabledWidget(QGroupBox): #generic thread enabled widget example
-    grid = QGridLayout()
-    threadpool = QThreadPool() #must define threadpool for workers pre __init__
-    button = QPushButton()
-    ding = True
-    
-    def __init__(self):
-        super().__init__()
-        self.setLayout(self.grid)
-        self.button.setText("><")
-        self.grid.addWidget(self.button)
-        self.button.clicked.connect(self.withThread)
+                
+class RunScripts(QRunnable): #script that attempts to run all currently queued tests in order
+    @Slot()
+    def run(self):
+        if scriptorder == None or scriptorder == [""]: #check to make sure scriptorder has been set
+            print("No Scripts Have Been Selected!")
+            return
         
-    def withThread(self): #use this method to call workers
-        worker = Worker()
-        self.threadpool.start(worker)
+        for i in scriptorder:
+            tstname = i+'.run()'
+            try:
+                exec(tstname)
+            except Exception as e:
+                print(e)
 
 #----------------
 # Console Menu
@@ -224,12 +214,15 @@ class PlaylistPanel(QGroupBox): #creates the overall groupbox
         self.list_widget.clear()
         scriptorder.clear()
 
-class StartStopPanel(QWidget):
+class StartStopPanel(QWidget): 
+    #defines icons for the buttons
     startico = QIcon("StartIcon.png")
     stopico = QIcon("StopIcon.png")
     breadico = QIcon("BreadboardIcon.png")
+    threadstate = 0 #defines a var used to hold info about the currently used QRunnable
+    threadpool = QThreadPool() #defines threadpool to hold runnable objects started within the widget
     def __init__(self):
-        super().__init__()
+        super().__init__() #set the layout and buttons
         grid = QGridLayout()
         self.setLayout(grid)
         start = QToolButton()
@@ -244,8 +237,34 @@ class StartStopPanel(QWidget):
         grid.addWidget(start,0,0)
         grid.addWidget(stop,1,0)
         grid.addWidget(bread,2,0)
+        start.clicked.connect(self.StartButton)
+        stop.clicked.connect(self.StopButton)
+        bread.clicked.connect(self.BreadboardButton)
+
         
-        #todo, start stop functionality
+    def StopButton(self):
+        self.threadpool.clear()
+        
+    def BreadboardButton(self): #use this method to call workers
+        self.getstate()
+        if self.threadstate == 0:
+            worker = Breadboard()
+            self.threadpool.start(worker)
+            self.threadstate = 1
+        
+    def StartButton(self): #TODO, make it so this doesn't work if a name and makedir hasn't been set yet and if params haven't been fully defined
+        self.getstate()
+        if self.threadstate == 0:
+            worker = RunScripts()
+            self.threadpool.start(worker)
+    
+    def getstate(self):
+        if self.threadpool.activeThreadCount() > 0:
+            print("A Script is Currently Running, Please Wait or Hit Stop to Execute New Console Inputs.")
+            self.threadstate = 1
+        else:
+        #use this https://www.pythonguis.com/faq/how-to-start-stop-or-pause-running-threads/ to contorl start and stop.
+            self.threadstate = 0
 
 class Playlist(QWidget):
     def __init__(self):
