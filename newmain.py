@@ -3,11 +3,12 @@
 from __future__ import annotations
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtSerialPort import QSerialPort
-from PySide6.QtCore import QIODeviceBase, Slot, Signal, Qt, QThread, QObject, QEvent, QRunnable, QThreadPool
-from PySide6.QtGui import QPalette, QFocusEvent, QKeySequence, QShortcut, QMouseEvent, QIcon
+from PySide6.QtCore import QIODeviceBase, Slot, Signal, Qt, QThread, QObject, QEvent, QRunnable, QThreadPool, QMimeData, Qt
+from PySide6.QtGui import QPalette, QFocusEvent, QKeySequence, QShortcut, QMouseEvent, QIcon, QDrag, QPixmap
 from PySide6.QtWidgets import (
 QMainWindow, QApplication, QWidgetAction, QWidget, QGroupBox, QDockWidget, QGridLayout, QLabel,
-QVBoxLayout, QTextEdit, QPlainTextEdit, QPushButton, QDialog, QLineEdit, QComboBox, QCheckBox, QToolButton
+QVBoxLayout, QTextEdit, QPlainTextEdit, QPushButton, QDialog, QLineEdit, QComboBox, QCheckBox, QToolButton,
+QHBoxLayout, QListWidget, QInputDialog
 )
 import glob
 import serial
@@ -26,7 +27,6 @@ for file in glob.glob("./scripts/*.py"): #check the TestScripts directory for us
         continue
     namestuff = file.split("/")
     name = namestuff[2].split(".")
-    flaglist.append(name[0]) #add the name stripped from full file name to script list
     exec('import scripts.'+name[0]+' as '+name[0]) #import the user script as its own name
 
 
@@ -44,131 +44,8 @@ try:
 except:
     app = QApplication.instance()
     
-
-
-
 #----------------
-# Console Menu
-#----------------
-"""
-somehow implement a ipykernel console as a subthread/multithread or something
-or have scripts send data to some variable to update text that is printed to the screen
-overall just have some method of showing the outputs of user scripts while they are run
-and have a play button here or on the playlist to start user script w/ popup menu that says "are you sure"
-"""
-"""
-#
-# Currently Scrapped! Run with spyder console or traditional python3 -m.
-#
-
-class SubprocessWorker(QThread):
-    output_line = Signal(str)
-    finished_signal = Signal(int) #exit code
-    
-    def __init__(self, command):
-        super().__init__()
-        self.command = command
-
-    def run(self):
-        process = subprocess.Popen(
-            self.command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1
-        )
-        
-        for line in process.stdout:
-            self.output_line.emit(line.rstrip())
-            
-        process.wait()
-        self.finished_signal.emit(process.returncode)
-
-#in the worker thread do subprocess.call(['python', 'somescript.py', somescript_arg1, somescript_val1,...]) or use 'pyhton3', f'{script}' and change value in script to change program targeted.
-##fix tmrrw; merge subprocess in and out w/ widget to create one thingy
-class SubprocessOut(QPlainTextEdit):
-    UsrControl = 1
-    usrstr = ""
-    def __init__(self):
-        super().__init__()
-        self.setReadOnly(True)
-        self.worker = None
- 
-    def run_command(self):
-        if self.worker is not None:
-            return
-        self.worker = SubprocessWorker(
-            "python3", f'{something.py}')
-        self.worker.output_line.connect(self.on_output_line)
-        self.worker.finished_signal.connect(self.on_finished)
-        self.worker.start()
-        
-    def on_output_line(self,text):
-        self.appendPlainText(text)
-    
-    def on_finished(self, exit_code):
-        self.appendPlainText(f"--- Process finished  (exit code {exit_code}) ---")
-        self.worker = None
-    
-            
-class SubprocessIn(QLineEdit):
-    def __init__(self):
-        super().__init__()
-        self.setText("$  ")
-        self.installEventFilter(self)
-        
-
-            
-        return 
-        
-    def DoLineIn(self, *args):
-        ans = self.text()
-        ans = ans.strip("$")
-        self.setText("$  ")
-        
-class SubprocessWidget(QWidget):
-    def __init__(self):
-        super().__init__()
-        grid = QGridLayout()
-        self.setLayout(grid)
-        subprocin = SubprocessIn()
-        grid.addWidget(SubprocessOut(),0,0)
-        grid.addWidget(subprocin,1,0)
-"""
-
-        
-    
-#----------------
-# Playlist Menu
-#----------------
-"""
-#todo !!!NEXTUP!!!
-create a list of entries that can be clicked or dragged on buttons to change their order
-list above the playlist has items which can be selected to set their state to checked() and adds them to the playlist
-use a .ini file for the whole program to keep track of the order upon exit and reload of the program (along with other vars)
-"""
-class PlaylistPanel(QWidget):
-    def __init__(self):
-        super().__init__()
-        grid = QGridLayout()
-        self.setLayout(grid)
-
-class StartStopPanel(QGroupBox):
-    def __init__(self):
-        super().__init__()
-        grid = QGridLayout()
-        self.setLayout(grid)
-
-class Playlist(QGroupBox):
-    def __init__(self):
-        super().__init__()
-        grid = QGridLayout()
-        self.setLayout(grid)
-        grid.addWidget(PlaylistPanel(),0,0)
-        grid.addWidget(StartStopPanel(),0,1)
-
-#----------------
-# Sample Window
+# Command Threading Objects
 #----------------
 class WSignals(QObject): #defines signals that can be given off by Worker when completed
     finished = Signal(int) #gets just thread_id
@@ -189,9 +66,7 @@ class Worker(QRunnable): #generic QThread runner example
             except Exception as e:
                 print(e)
             
-
-
-class ThreadEnabledWidget(QGroupBox):
+class ThreadEnabledWidget(QGroupBox): #generic thread enabled widget example
     grid = QGridLayout()
     threadpool = QThreadPool() #must define threadpool for workers pre __init__
     button = QPushButton()
@@ -207,7 +82,182 @@ class ThreadEnabledWidget(QGroupBox):
     def withThread(self): #use this method to call workers
         worker = Worker()
         self.threadpool.start(worker)
+
+#----------------
+# Console Menu
+#----------------
+"""
+#
+# Currently Scrapped! Run with DE console or with spyder console for separated window.
+#
+class SubprocessWorker(QThread):
+    output_line = Signal(str)
+    finished_signal = Signal(int) #exit code
+    def __init__(self, command):
+        super().__init__()
+        self.command = command
+    def run(self):
+        process = subprocess.Popen(
+            self.command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+        for line in process.stdout:
+            self.output_line.emit(line.rstrip())
+        process.wait()
+        self.finished_signal.emit(process.returncode)
+#in the worker thread do subprocess.call(['python', 'somescript.py', somescript_arg1, somescript_val1,...]) or use 'pyhton3', f'{script}' and change value in script to change program targeted.
+##fix tmrrw; merge subprocess in and out w/ widget to create one thingy
+class SubprocessOut(QPlainTextEdit):
+    UsrControl = 1
+    usrstr = ""
+    def __init__(self):
+        super().__init__()
+        self.setReadOnly(True)
+        self.worker = None
+    def run_command(self):
+        if self.worker is not None:
+            return
+        self.worker = SubprocessWorker(
+            "python3", f'{something.py}')
+        self.worker.output_line.connect(self.on_output_line)
+        self.worker.finished_signal.connect(self.on_finished)
+        self.worker.start()
+    def on_output_line(self,text):
+        self.appendPlainText(text)
+    def on_finished(self, exit_code):
+        self.appendPlainText(f"--- Process finished  (exit code {exit_code}) ---")
+        self.worker = None
+class SubprocessIn(QLineEdit):
+    def __init__(self):
+        super().__init__()
+        self.setText("$  ")
+        self.installEventFilter(self)
+        return 
+    def DoLineIn(self, *args):
+        ans = self.text()
+        ans = ans.strip("$")
+        self.setText("$  ")
+class SubprocessWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        grid = QGridLayout()
+        self.setLayout(grid)
+        subprocin = SubprocessIn()
+        grid.addWidget(SubprocessOut(),0,0)
+        grid.addWidget(subprocin,1,0)
+"""
+    
+#----------------
+# Playlist Menu
+#----------------
+scriptorder = [] #creates a variable to mirror the positions of scripts to be ran
+
+class PlaylistPanel(QGroupBox): #creates the overall groupbox
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        layout = QGridLayout(self)
+        self.setLayout(layout)
         
+        self.scriptlist = QListWidget() #creates a QListWidget to hold the available user scripts
+        for item in flaglist:
+            self.scriptlist.addItem(item)
+        
+        # set the layout for all needed widgets
+        self.list_widget = QListWidget(self)
+        
+        scripttitle = QLabel("Available Scripts")
+        scripttitle.setAlignment(QtCore.Qt.AlignCenter)
+        scripttitle.setMargin(0)
+        scripttitle.setMinimumHeight(0)
+        
+        scriptorder = QLabel("Script Order (Top to Bottom)")
+        scriptorder.setAlignment(QtCore.Qt.AlignCenter)
+        scriptorder.setMargin(0)
+        scriptorder.setMinimumHeight(0)
+        
+        layout.addWidget(scripttitle,0,0)
+        layout.addWidget(scriptorder,0,2)
+        layout.addWidget(self.scriptlist,1,0,4,1)
+        layout.addWidget(QLabel(">"), 1,1,4,1)
+        layout.addWidget(self.list_widget, 1, 2, 4, 1)
+
+        # create buttons
+        add_button = QPushButton('Add')
+        add_button.clicked.connect(self.add)
+
+        insert_button = QPushButton('Insert')
+        insert_button.clicked.connect(self.insert)
+
+        remove_button = QPushButton('Remove')
+        remove_button.clicked.connect(self.remove)
+
+        clear_button = QPushButton('Clear')
+        clear_button.clicked.connect(self.clear)
+
+        layout.addWidget(add_button, 1, 3)
+        layout.addWidget(insert_button, 2, 3)
+        layout.addWidget(remove_button, 3, 3)
+        layout.addWidget(clear_button, 4, 3)
+
+    def add(self): #each function changes list_widget and then mirrors the change to scriptorder
+        item = self.scriptlist.currentItem().text()
+        self.list_widget.addItem(item)
+        scriptorder.append(item)
+
+    def insert(self):
+            current_row = self.list_widget.currentRow()
+            item = self.scriptlist.currentItem().text()
+            self.list_widget.insertItem(current_row+1,item)
+            scriptorder.insert(current_row+1, item)
+
+    def remove(self):
+        current_row = self.list_widget.currentRow()
+        if current_row >= 0:
+            current_item = self.list_widget.takeItem(current_row)
+            del current_item
+            del scriptorder[current_row]
+
+    def clear(self):
+        self.list_widget.clear()
+        scriptorder.clear()
+
+class StartStopPanel(QWidget):
+    startico = QIcon("StartIcon.png")
+    stopico = QIcon("StopIcon.png")
+    breadico = QIcon("BreadboardIcon.png")
+    def __init__(self):
+        super().__init__()
+        grid = QGridLayout()
+        self.setLayout(grid)
+        start = QToolButton()
+        stop = QToolButton()
+        bread = QToolButton()
+        start.setIcon(self.startico)
+        stop.setIcon(self.stopico)
+        bread.setIcon(self.breadico)
+        start.setIconSize(QtCore.QSize(35,35))
+        stop.setIconSize(QtCore.QSize(35,35))
+        bread.setIconSize(QtCore.QSize(35,35))
+        grid.addWidget(start,0,0)
+        grid.addWidget(stop,1,0)
+        grid.addWidget(bread,2,0)
+        
+        #todo, start stop functionality
+
+class Playlist(QWidget):
+    def __init__(self):
+        super().__init__()
+        grid = QGridLayout()
+        self.setLayout(grid)
+        grid.addWidget(PlaylistPanel(),0,0)
+        grid.addWidget(StartStopPanel(),0,1)
+
+#----------------
+# Sample Window
+#----------------
 
 class EditableBox(QWidget): #box to hold the editable class widgets in SampleFiles (defines the grid layout)
     grid = QGridLayout()
@@ -302,11 +352,6 @@ class SampleWidget(QGroupBox): #overall box for the sample definiton widgets
         grid.addWidget(SampleFiles(),0,0)
         grid.addWidget(SampleParams(),1,0)
         
-    
-
-    
-
-
 #----------------
 # Status Window
 #----------------

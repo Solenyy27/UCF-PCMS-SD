@@ -258,11 +258,6 @@ def defineparams():
                     paramdict[item]=ans #add float vlaue to paramdict
                 writecfg(i,item,paramdict[item]) #write user inputted parameters to the config
 
-needs = {}
-gives = {}
-order = []
-orderout = []
-ordermid = []
 
 def testsort():
     for i in flaglist: 
