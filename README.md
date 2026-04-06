@@ -21,7 +21,7 @@ On a Raspberry Pi, the following packages are needed through either pipx or apt:
 configparser, PySide6, serial, matplotlib, pandas, numpy
 ```
 The following command should work for getting all packages: <br>
-**via pipx:**
+**via pipx**
 ```
 pipx install configparser PySide6 serial matplotlib pandas numpy
 ```
