@@ -1,3 +1,34 @@
+Metadata-Version: 2.4
+Name: pcms
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: >=3.14
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: configparser>=7.2.0
+Requires-Dist: importlib>=1.0.4
+Requires-Dist: ipykernel>=6.31.0
+Requires-Dist: numpy>=2.4.2
+Requires-Dist: pandas>=3.0.0
+Requires-Dist: pathlib>=1.0.1
+Requires-Dist: pexpect>=4.9.0
+Requires-Dist: picamera2>=0.3.34
+Requires-Dist: ptyprocess>=0.7.0
+Requires-Dist: pyqt6>=6.11.0
+Requires-Dist: pyqtconsole>=1.3.0
+Requires-Dist: pyside6>=6.11.0
+Requires-Dist: python-dateutil>=2.9.0.post0
+Requires-Dist: pytz>=2025.2
+Requires-Dist: qtconsole>=5.7.1
+Requires-Dist: rpi-gpio>=0.7.1
+Requires-Dist: serial>=0.0.97
+Requires-Dist: six>=1.17.0
+Requires-Dist: spyder>=6.1.3
+Requires-Dist: spyder-kernels>=3.1.3
+Requires-Dist: tzdata>=2025.3
+Requires-Dist: xtralien>=2.11.2
+Dynamic: license-file
+
 
 
 <div style="text-align:center;">
@@ -34,8 +65,6 @@ Additionally, the `xtralien` package will be needed, it is only available throug
 ```
 pip install xtralien --break-package-system
 ```
-
-Finally, `git clone` this project to your device. In theory, the `.desktop` file witin the directory should provide a shortcut the accessing the program if placed in /home/
 
 ## 3. Repository Layout and Contents
 The file structure should be as follows:  

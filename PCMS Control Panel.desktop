@@ -1,0 +1,17 @@
+[Desktop Entry]
+Comment[en_US]=
+Comment=
+Exec=python3 -m '~/UCF-PCMS-SD/main.py'
+GenericName[en_US]=
+GenericName=
+Icon=gears
+MimeType=
+Name[en_US]=PCMS Control Panel
+Name=PCMS Control Panel
+Path=
+StartupNotify=true
+Terminal=false
+TerminalOptions=
+Type=Application
+X-KDE-SubstituteUID=false
+X-KDE-Username=
