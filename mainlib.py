@@ -28,6 +28,7 @@ for file in glob.glob("./scripts/*.py"): #check the TestScripts directory for us
 #----------------
 class sample: #define the class "sample" to hold data about where and what the sample has/will do
     #flag value of 0 = not set, 1 = set to be done, 2 = completed successfully, 3 = completed unsuccessfully
+    #use of flags is depreciated because of the pivot to GUI.
 
     def __init__(self): #initialize the class with list of a list of flags from flaglist with a default value of 0
         self.flags = []
@@ -74,8 +75,8 @@ no = ['N', 'n', 'no', 'No']
 #----------------
 # Relay Control
 #----------------
-try:
-    relay_pins = [17, 18, 27, 22, 23, 24, 12, 16] #Relay pins listed in order of their use (relays 1,2,3,...)
+relay_pins = [17, 18, 27, 22, 23, 24, 12, 16] #Relay pins listed in order of their use (relays 1,2,3,...)
+try: #except pass used so that var not created when the device is not a rasberry pi    
     relay_states = [GPIO.HIGH, GPIO.HIGH, GPIO.HIGH, GPIO.HIGH, GPIO.HIGH, GPIO.HIGH, GPIO.HIGH, GPIO.HIGH] #corresponding states of each relay
 except:
     pass
@@ -100,8 +101,6 @@ def relayreset(): #resets relay to the default position
     for i in range(len(relay_pins)): #sends relay states to GPIO for each pin
         GPIO.output(relay_pins[i], relay_states[i])
 
-
-
 #----------------
 # Scripting Functions
 #----------------
@@ -118,81 +117,81 @@ def yesno(err=0): #General function for Y/n, recurse for invalid
     else:
         return yesno(1)
         
-def nameprompt(name): #Prompts for new name, recurse for no during confirm
-    if name == sample.sname:
-        print("Name already in use. Continue anyways? (this will overwrite any data taken)")
-        ans = yesno(0)
-        if ans == 1:
-            sample.sname = name
-            print(f"Files will be stored as \"{sample.sname}_Testname.filetype\".")
-            return
-        if ans == 0:
-            nameprompt()
-            return
-    print("Confirm sample name?")
-    ans = yesno(0)
-    if ans == 1:
-        sample.sname = name
-        print(f"Files will be stored as \"{sample.sname}_Testname.filetype\".")
-        return
-    if ans == 0:
-        nameprompt()
-        return
+# def nameprompt(name): #old CUI prompt for getting sample name
+#     if name == sample.sname:
+#         print("Name already in use. Continue anyways? (this will overwrite any data taken)")
+#         ans = yesno(0)
+#         if ans == 1:
+#             sample.sname = name
+#             print(f"Files will be stored as \"{sample.sname}_Testname.filetype\".")
+#             return
+#         if ans == 0:
+#             nameprompt()
+#             return
+#     print("Confirm sample name?")
+#     ans = yesno(0)
+#     if ans == 1:
+#         sample.sname = name
+#         print(f"Files will be stored as \"{sample.sname}_Testname.filetype\".")
+#         return
+#     if ans == 0:
+#         nameprompt()
+#         return
     
-def testprompt(e=0): #prompts user for test to run
-    sample.clearflags()
-    valid = 0
-    amnt = 0
-    lst = str()
-    chk = str()
+# def testprompt(e=0): #old CUI prompt for selecting tests from user scripts
+#     sample.clearflags()
+#     valid = 0
+#     amnt = 0
+#     lst = str()
+#     chk = str()
     
-    if e == 1: #recurse statement for invalid input
-        print("Invalid Input, Please Try Again")
-    if e == 0: #default statement
-        print("Please select the test to be performed:")
-    if e == 2: #recurse statement for discard input
-        print("Discarding inputs, please select again.")
+#     if e == 1: #recurse statement for invalid input
+#         print("Invalid Input, Please Try Again")
+#     if e == 0: #default statement
+#         print("Please select the test to be performed:")
+#     if e == 2: #recurse statement for discard input
+#         print("Discarding inputs, please select again.")
     
-    print("Valid inputs:",end="")
-    for i in sample.flags:
-        print(f"{i[0]} ",end="")
-    print("(separate inputs by space)")
+#     print("Valid inputs:",end="")
+#     for i in sample.flags:
+#         print(f"{i[0]} ",end="")
+#     print("(separate inputs by space)")
     
-    ans = input(">")
-    lst = ans.split() #split answer by spaces, set flags based on input
+#     ans = input(">")
+#     lst = ans.split() #split answer by spaces, set flags based on input
     
-    for chk in lst: #for each part of user input check string
-        chk = chk.upper() #convert string to upper case to make sure things can match
-        for i in sample.flags: #check for if an input matches the flags set in sample class
-            if chk == i[0].upper():
-                print(f"Selection: {i[0]}")
-                i[1] = 1
-                valid = 1
-                amnt = amnt + 1
+#     for chk in lst: #for each part of user input check string
+#         chk = chk.upper() #convert string to upper case to make sure things can match
+#         for i in sample.flags: #check for if an input matches the flags set in sample class
+#             if chk == i[0].upper():
+#                 print(f"Selection: {i[0]}")
+#                 i[1] = 1
+#                 valid = 1
+#                 amnt = amnt + 1
     
-    if amnt == 0:
-        print("No tests have been selected, confirming selection(s) will exit the program.")
+#     if amnt == 0:
+#         print("No tests have been selected, confirming selection(s) will exit the program.")
         
-    if valid == 0: #recurse if no valid string found
-        testprompt(1)
-        return
+#     if valid == 0: #recurse if no valid string found
+#         testprompt(1)
+#         return
 
-    for flag in flaglist: #after tests have been selected, check for testlist selections
-        tstname = eval(flag)
-        if sample.chkflag(flag) == 1 and hasattr(tstname, 'testlist'):
-            for i in tstname.testlist:
-                sample.setflag(i,1) #set the flags for each individual test in flag.testlist to 1
-            if hasattr(tstname, 'run') == False:
-                sample.setflag(flag, 0) #set the flag for the script to false if file containing testlist has no test
+#     for flag in flaglist: #after tests have been selected, check for testlist selections
+#         tstname = eval(flag)
+#         if sample.chkflag(flag) == 1 and hasattr(tstname, 'testlist'):
+#             for i in tstname.testlist:
+#                 sample.setflag(i,1) #set the flags for each individual test in flag.testlist to 1
+#             if hasattr(tstname, 'run') == False:
+#                 sample.setflag(flag, 0) #set the flag for the script to false if file containing testlist has no test
 
-    if valid == 1: # if a valid selection was chosen, confirm
-        print("Confirm Selection(s)?")
-        yn = yesno() #yesno to confirm selections
-        if yn == 1:
-            return
-        if yn == 0:
-            testprompt(2) #recurse w/ no error to reinput responses
-            return
+#     if valid == 1: # if a valid selection was chosen, confirm
+#         print("Confirm Selection(s)?")
+#         yn = yesno() #yesno to confirm selections
+#         if yn == 1:
+#             return
+#         if yn == 0:
+#             testprompt(2) #recurse w/ no error to reinput responses
+#             return
 
 #----------------
 # CFG Control
@@ -230,87 +229,34 @@ def mkdir(path): #creates directory if it does not exist
     print(f"Created directory ~/{path}")
     return        
     
-def prgmstart(): #Basic greeting logo
+def prgmstart(): #Basic greeting logo used for CUI
     f = open('logo.txt', 'r')
     file_cont = f.read()
     print(file_cont)
     f.close
     
-paramdict = {}
+paramdict = {} #defines parameter dictionary
+scriptorder = [] #defines script order, mainly used in main functions for user script ordering
 def listparams():
-    for i in flaglist:
-        tstname = eval(i)
-        if sample.chkflag(i) == 1 and hasattr(tstname, 'paramlist'):
-            for item in tstname.paramlist:
-                paramdict[item] = None
-            writecfg(i,item,paramdict[item])
-
-def defineparams():
-    paramdict = {} #create an empty dictionary to store needed parameters
-    for i in flaglist: #define user vlaues
-        tstname = eval(i)
-        if sample.chkflag(i) == 1 and hasattr(tstname, 'paramlist'): #check for paramlist elements
-            for item in tstname.paramlist:
-                if item not in paramdict: #if parameter not already recorded in dictionary, have user define value
-                    print(f"Please define a value for {item}")
-                    ans = input(">")
-                    ans = float(ans) #convert to float
-                    paramdict[item]=ans #add float vlaue to paramdict
-                writecfg(i,item,paramdict[item]) #write user inputted parameters to the config
-
-
-def testsort():
-    for i in flaglist: 
-        tstname = eval(i)
-        if sample.chkflag(i) == 1:
-            order.append(i)
-            if hasattr(tstname, 'needlist'): #checks for needlist in each flagged test
-                for item in tstname.needlist:
-                    try: #try to append to list of the item
-                        needs[item].append(i)
-                    except KeyError: #if no list exists, create it
-                        needs[item] = [i]
-            if hasattr(tstname, 'givelist'): #checks for givelist in each flagged test
-                for item in tstname.givelist:
-                    gives[item] = i #each givelist variable can only be given by one script
-
-    needls = []
-    givels = []
+    paramdict.clear()
+    if len(sample.cfgpath) > 0:
+        for i in scriptorder:
+            tstname = eval(i)
+            if hasattr(tstname, 'paramlist'):
+                for item in tstname.paramlist:
+                    paramdict[item] = None
+        for i in paramdict:
+            writecfg("User Input Parameters",i,paramdict[i])
+    else:
+        print("Please define a sample name before generating parameters list.")
     
-    for i in list(needs.values()):
-        for j in i:
-            needls.append(j)
-    print(needls)
-    for i in list(gives.values()):
-        givels.append(i)
-    print(givels)
-    
-    for i in order:
-        if i not in needls:
-            orderout.append(i)
-        else:
-            ordermid.append(i)
-    for i, tst in enumerate(ordermid):
-        try:    
-            nxt = ordermid[i+1]
-        except:
-            pass
-# todo clean this up its so bad
-
-
-def paramprompt(e=0):
-    skp = 0
-    if e == 1:
-        print("Something went wrong")
-        print(f"Debug: skipto {skp}")
-    
-def exitprompt(e=0):
-    if e == 1:
-        Print("Something Went Wrong")
-    print("Would you like to test another sample?")
-    ans = yesno(0)
-    if ans == 1:
-        return 0
-    if ans == 0:
-        return 1
+# def exitprompt(e=0): #old CUI function used for exit prompt
+#     if e == 1:
+#         print("Something Went Wrong")
+#     print("Would you like to test another sample?")
+#     ans = yesno(0)
+#     if ans == 1:
+#         return 0
+#     if ans == 0:
+#         return 1
 
