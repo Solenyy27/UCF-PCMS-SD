@@ -20,7 +20,7 @@ On a Raspberry Pi, the following packages are needed through either pipx or apt:
 ```
 configparser, PySide6, serial, matplotlib, pandas, numpy
 ```
-The following command should work for getting all packages:
+The following command should work for getting all packages: <br>
 **via pipx:**
 ```
 pipx install configparser PySide6 serial matplotlib pandas numpy
@@ -29,7 +29,7 @@ pipx install configparser PySide6 serial matplotlib pandas numpy
 ```
 apt install python3-configparser python3-PySide6 python3-serial python3-matplotlib python3-pandas python3-numpy
 ```
-<br>
+
 Additionally, the `xtralien` package will be needed, it is only available through pip via the following command:
 ```
 pip install xtralien --break-package-system
