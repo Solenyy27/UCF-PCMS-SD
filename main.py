@@ -194,7 +194,7 @@ class StartStopPanel(QWidget):
             print("A Script is Currently Running, Please Wait or Hit Stop to Execute New Console Inputs.")
             self.threadstate = 1
         else:
-        #use this https://www.pythonguis.com/faq/how-to-start-stop-or-pause-running-threads/ to contorl start and stop.
+        #use this https://www.pythonguis.com/faq/how-to-start-stop-or-pause-running-threads/ to control start and stop.
             self.threadstate = 0
 
 class Playlist(QWidget): #sets Playlist widget children widgets into their places

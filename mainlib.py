@@ -89,11 +89,12 @@ def relayinit(): #initializes GPIO for relay
         GPIO.output(relay_pins[i], relay_states[i]) #outputs signal to designated pin via GPIO.output(pin,state)
     print(relay_states) #prints the current relay states (1 is high, 0 is low); Switches toggled on when set to low
 
-def relaytoggle(relay): #function for toggling relay as numbered 1 through 8
-    relaynum = int(relay) - 1 #subtract 1 from user input to account for arrays starting at 0 instead of 1 e.g., 8 is actually array value 7
-    relay_states[relaynum] = not relay_states[relaynum] #uses the not function to invert True/False to False/True
-    for i in range(len(relay_pins)): #sets pins to designated state
-        GPIO.output(relay_pins[i], relay_states[i])
+def relaytoggle(*relay): #function for toggling relay as numbered 1 through 8
+    for i in relay:
+        relaynum = int(i) - 1 #subtract 1 from user input to account for arrays starting at 0 instead of 1 e.g., 8 is actually array value 7
+        relay_states[relaynum] = not relay_states[relaynum] #uses the not function to invert True/False to False/True
+        for i in range(len(relay_pins)): #sets pins to designated state
+            GPIO.output(relay_pins[i], relay_states[i])
         
 def relayreset(): #resets relay to the default position
     for i in range(len(relay_pins)): #sets all relay states to high
